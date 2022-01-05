@@ -21,7 +21,7 @@ export const Map: FC<MapProps> = (props) => {
             bgSize='contain'
             bgRepeat='no-repeat'
             width='100%'
-            maxWidth='1200px'
+            maxWidth='1000px'
             minWidth='475px'
             display='inline-block'
             position='relative'
