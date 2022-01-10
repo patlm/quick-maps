@@ -1,12 +1,12 @@
 import {
     Box,
     Button,
-    Editable,
-    EditableInput,
-    EditablePreview,
+    Input,
     Link,
     Select,
     Text,
+    Textarea,
+    useToast,
 } from '@chakra-ui/react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
@@ -62,15 +62,17 @@ const Maps: NextPage = () => {
         },
     ];
 
+    const toast = useToast();
+
     const imageRef = useRef<HTMLImageElement>(null);
+    const nameRef = useRef<HTMLInputElement>(null);
 
     const [user, setUser] = useState<User | null>();
-    const [mapName, setMapName] = useState<string>('Map Name');
-    const [mapDescription, setMapDescription] =
-        useState<string>('Map Description');
+    const [mapName, setMapName] = useState<string>('');
+    const [mapDescription, setMapDescription] = useState<string>('');
     const [resource, setResource] = useState<string>(maps[8].value);
     const [markers, setMarkers] = useState<Marker[]>([]);
-    const [name, setName] = useState<string>('new');
+    const [name, setName] = useState<string>('');
 
     // Imported from https://github.com/galexandrade/react-image-marker/blob/3290a7f4dec7145639efa63ec2e5a5ffe3218c37/src/utils/index.ts#L11 ------
 
@@ -106,13 +108,34 @@ const Maps: NextPage = () => {
     // end import -------------
 
     const onImageClick = (event: React.MouseEvent) => {
-        // Ensure did not click on a button
+        if (!name) {
+            toast({
+                title: 'Location Name Required.',
+                description:
+                    'You need to type the name of the location in the text box above the map before trying to add it to the map.',
+                status: 'warning',
+                duration: 5000,
+                isClosable: true,
+            });
+            return;
+        }
+
         if (event.target.toString().includes('Button')) {
+            // Ensure did not click on a button
             return;
         }
 
         // Ensure name is unique
         if (!markers.every((marker) => marker.name !== name)) {
+            toast({
+                title: 'Location Name Must Be Unique.',
+                description:
+                    'The name of the location that you are trying to add has already been used for a different location on the map. Try using a different name.',
+                status: 'warning',
+                duration: 5000,
+                isClosable: true,
+            });
+            return;
             return;
         }
 
@@ -136,6 +159,12 @@ const Maps: NextPage = () => {
                 left: left,
             },
         ]);
+
+        if (nameRef.current) {
+            nameRef.current.value = '';
+            setName('');
+            nameRef.current.focus();
+        }
     };
 
     const onMarkerClick = (value: string) => {
@@ -146,6 +175,11 @@ const Maps: NextPage = () => {
             updated.splice(index, 1);
             return updated;
         });
+        if (nameRef.current) {
+            nameRef.current.value = value;
+            setName(value);
+            nameRef.current.focus();
+        }
     };
 
     const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -158,7 +192,48 @@ const Maps: NextPage = () => {
 
     const handleCreateMap = (): void => {
         if (!user) {
-            console.log('no user');
+            toast({
+                title: 'User Sign In Required.',
+                description: 'You must sign in to create this map',
+                status: 'error',
+                duration: 10000,
+                isClosable: true,
+            });
+        }
+
+        if (!mapName) {
+            toast({
+                title: 'Name Required.',
+                description: 'To create this map, it needs to have a name',
+                status: 'error',
+                duration: 10000,
+                isClosable: true,
+            });
+        }
+
+        if (!mapDescription) {
+            toast({
+                title: 'Description Required.',
+                description:
+                    'To create this map, it needs to have a description',
+                status: 'error',
+                duration: 10000,
+                isClosable: true,
+            });
+        }
+
+        if (markers.length === 0) {
+            toast({
+                title: 'Locations Required.',
+                description:
+                    'To create this map, at least one location (point) on the map must be added',
+                status: 'error',
+                duration: 10000,
+                isClosable: true,
+            });
+        }
+
+        if (!user || !mapName || !mapDescription || markers.length === 0) {
             return;
         }
 
@@ -178,7 +253,14 @@ const Maps: NextPage = () => {
         fetch('/api/maps', reqOptions)
             .then((response) => response.json())
             .then((_) => {
-                Router.push({ pathname: '/maps' });
+                toast({
+                    title: 'Map Created',
+                    description: 'Your map has been created!',
+                    status: 'success',
+                    duration: 5000,
+                    isClosable: true,
+                });
+                Router.push({ pathname: '/maps', query: { userId: user.uid } });
             });
     };
 
@@ -197,50 +279,43 @@ const Maps: NextPage = () => {
 
     return (
         <NavWrapper>
-            <Text>
-                Directions: Click on the title and description to change their
-                values. Add point name in the box above and click on map for
-                location. Click on a point again to delete it from the map. Two
-                points with the same name is not allowed. You must be signed in
-                to be able to create a map. Feel free to reach out to{' '}
+            <Text mb={'1'}>
+                Directions: Add a title and description for the map. Add point
+                name in the box above the map and click on map to the location.
+                Click on a point again to delete it from the map. Two points
+                with the same name are not allowed. You must be signed in to be
+                able to create a map. Feel free to reach out to{' '}
                 <Link href='https://patlm.github.io/'>Patrick</Link> if there is
                 another map you would like added to the options.
             </Text>
-            <Editable defaultValue={mapName} fontSize='2xl'>
-                <EditablePreview display={'block'} />
-                <EditableInput
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                        setMapName(event.target.value)
-                    }
-                />
-            </Editable>
-            <Editable defaultValue={mapDescription} marginBottom='10px'>
-                <EditablePreview display={'block'} />
-                <EditableInput
-                    onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
-                        setMapDescription(event.target.value)
-                    }
-                />
-            </Editable>
-            <Select
-                value={resource}
-                onChange={handleChange}
-                marginBottom='10px'
-            >
+            <Input
+                fontSize={'2xl'}
+                mb={'1'}
+                onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setMapName(event.target.value)
+                }
+                placeholder={'Map Name'}
+            />
+            <Textarea
+                mb={'1'}
+                onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) =>
+                    setMapDescription(event.target.value)
+                }
+                placeholder={'Map Description'}
+            />
+            <Select marginBottom={'1'} onChange={handleChange} value={resource}>
                 {maps.map((opt, index) => (
                     <option key={index} value={opt.value}>
                         {opt.label}
                     </option>
                 ))}
             </Select>
-            <Editable
-                defaultValue='Point name'
-                isPreviewFocusable={true}
-                marginBottom='10px'
-            >
-                <EditablePreview minHeight='15px' display={'block'} />
-                <EditableInput onChange={handleStateChange} />
-            </Editable>
+            <Input
+                mb={'1'}
+                onChange={handleStateChange}
+                placeholder={'Location Name'}
+                ref={nameRef}
+            />
             <Box id='map-component-container' margin={0} padding={0}>
                 <MapComponent
                     myRef={imageRef}
