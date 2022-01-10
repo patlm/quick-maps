@@ -16,6 +16,7 @@ type MapCardProps = {
     map: Map;
 };
 
+// Modified Blog Post with Image: https://chakra-templates.dev/components/cards
 export const MapCard: FC<MapCardProps> = (props) => {
     const [user, setUser] = useState<User>({
         displayName: 'John Doe',

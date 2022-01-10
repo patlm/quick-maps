@@ -39,6 +39,7 @@ type Link = {
 const Links: Link[] = [
     { name: 'Home', href: '/' },
     { name: 'Maps', href: '/maps' },
+    { name: 'Creators', href: '/creators' },
     { name: 'Create', href: '/create' },
 ];
 
@@ -167,7 +168,8 @@ export const NavWrapper: FC<NavWrapperProps> = (props) => {
                                         <MenuItem
                                             onClick={() => {
                                                 router.push({
-                                                    pathname: '/profile',
+                                                    pathname: '/maps',
+                                                    query: { userId: user.uid },
                                                 });
                                             }}
                                         >

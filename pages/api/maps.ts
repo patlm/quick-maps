@@ -20,21 +20,47 @@ export default async function handler(
 
     switch (req.method) {
         case 'GET':
-            const getReqMapData = await db.collection('maps').get();
+            const { userId } = req.query;
+
+            let usersMaps: string[] | null = null;
+
+            if (userId) {
+                const user = (
+                    await db
+                        .collection('users')
+                        .doc(userId as string)
+                        .get()
+                ).data() as User;
+
+                usersMaps = user.maps;
+            }
 
             const maps: Map[] = [];
-            getReqMapData.forEach((map) => {
-                const m = map.data() as Map;
 
-                maps.push({
-                    creator: m.creator,
-                    description: m.description,
-                    id: m.id,
-                    name: m.name,
-                    resource: m.resource,
-                    markers: [],
+            if (usersMaps != null) {
+                for (const mId of usersMaps) {
+                    const map = (
+                        await db.collection('maps').doc(mId).get()
+                    ).data() as Map;
+                    if (map) {
+                        maps.push(map);
+                    }
+                }
+            } else {
+                const getReqMapData = await db.collection('maps').get();
+                getReqMapData.forEach((map) => {
+                    const m = map.data() as Map;
+
+                    maps.push({
+                        creator: m.creator,
+                        description: m.description,
+                        id: m.id,
+                        name: m.name,
+                        resource: m.resource,
+                        markers: [],
+                    });
                 });
-            });
+            }
 
             for (const m of maps) {
                 const coordinateData = await db
