@@ -5,6 +5,7 @@ type MarkerButtonProps = {
     top: Number;
     left: Number;
     value: string;
+    showTitle: boolean;
     onClick: (value: string, setCorrect: () => void) => void;
 };
 
@@ -19,6 +20,7 @@ export const MarkerButton: FC<MarkerButtonProps> = (props) => {
 
     return (
         <Button
+            title={props.showTitle ? props.value : undefined}
             top={`${props.top}%`}
             left={`${props.left}%`}
             onClick={() => props.onClick(props.value, setCorrect)}

@@ -7,6 +7,7 @@ type MapProps = {
     myRef?: LegacyRef<HTMLDivElement>;
     markers: Marker[];
     src: string;
+    showTitle: boolean;
     onClick: (value: string, setCorrect: () => void) => void;
     onImageClick?: (e: React.MouseEvent) => void;
 };
@@ -49,6 +50,7 @@ export const Map: FC<MapProps> = (props) => {
                             left={marker.left}
                             value={marker.name}
                             onClick={props.onClick}
+                            showTitle={props.showTitle}
                         />
                     );
                 })}

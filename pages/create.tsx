@@ -1,6 +1,7 @@
 import {
     Box,
     Button,
+    Flex,
     Input,
     Link,
     Select,
@@ -11,11 +12,12 @@ import {
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { NextPage } from 'next';
-import Router from 'next/router';
+import Router, { useRouter } from 'next/router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Map as MapComponent } from '../components/Map';
 import { NavWrapper } from '../components/NavWrapper';
 import { fireClientConfig } from '../lib/fireConfig';
+import { Map } from '../models/map';
 import { Marker } from '../models/marker';
 
 const Maps: NextPage = () => {
@@ -62,10 +64,12 @@ const Maps: NextPage = () => {
         },
     ];
 
+    const router = useRouter();
     const toast = useToast();
 
     const imageRef = useRef<HTMLImageElement>(null);
     const nameRef = useRef<HTMLInputElement>(null);
+    const nameValueRef = useRef<HTMLDivElement>(null);
 
     const [user, setUser] = useState<User | null>();
     const [mapName, setMapName] = useState<string>('');
@@ -73,6 +77,25 @@ const Maps: NextPage = () => {
     const [resource, setResource] = useState<string>(maps[8].value);
     const [markers, setMarkers] = useState<Marker[]>([]);
     const [name, setName] = useState<string>('');
+    const [isInEdit, setIsInEdit] = useState(false);
+    const [mapId, setMadId] = useState('na');
+
+    useEffect(() => {
+        const { edit } = router.query;
+        if (edit) {
+            fetch(`/api/maps/${edit}`)
+                .then((response) => response.json())
+                .then((response) => {
+                    const map = response as Map;
+                    setMapName(map.name);
+                    setMapDescription(map.description);
+                    setResource(map.resource);
+                    setMarkers(map.markers);
+                    setIsInEdit(true);
+                    setMadId(map.id);
+                });
+        }
+    }, [router]);
 
     // Imported from https://github.com/galexandrade/react-image-marker/blob/3290a7f4dec7145639efa63ec2e5a5ffe3218c37/src/utils/index.ts#L11 ------
 
@@ -108,6 +131,73 @@ const Maps: NextPage = () => {
     // end import -------------
 
     const onImageClick = (event: React.MouseEvent) => {
+        if (event.target.toString().includes('Button')) {
+            // Ensure did not click on a button
+            return;
+        }
+
+        if (nameValueRef.current && !nameValueRef.current.hidden) {
+            setMarkers((prev) => {
+                const next: Marker[] = [];
+                prev.forEach((marker, index) => {
+                    if (index != prev.length - 1) {
+                        next.push(marker);
+                    }
+                });
+                return next;
+            });
+            nameValueRef.current.hidden = true;
+            return;
+        }
+
+        const pos = imageRef.current!.getBoundingClientRect();
+
+        const [top, left] = calculateMarkerPosition(
+            event,
+            pos,
+            window.scrollY,
+            3,
+            3
+        );
+
+        setMarkers((prev) => [
+            ...prev,
+            {
+                id: 'blank-new-id',
+                name: 'blank-new-name',
+                top: top,
+                left: left,
+            },
+        ]);
+
+        if (nameValueRef.current) {
+            nameValueRef.current.hidden = false;
+        }
+
+        if (nameRef.current) {
+            nameRef.current.value = '';
+            setName('');
+            nameRef.current.focus();
+        }
+    };
+
+    const handleCancel = () => {
+        setMarkers((prev) => {
+            const next: Marker[] = [];
+            prev.forEach((marker, index) => {
+                if (index != prev.length - 1) {
+                    next.push(marker);
+                }
+            });
+            return next;
+        });
+        if (nameValueRef.current) {
+            nameValueRef.current.hidden = true;
+        }
+    };
+
+    const handleAdd = () => {
+        // Ensure name has a value
         if (!name) {
             toast({
                 title: 'Location Name Required.',
@@ -117,11 +207,6 @@ const Maps: NextPage = () => {
                 duration: 5000,
                 isClosable: true,
             });
-            return;
-        }
-
-        if (event.target.toString().includes('Button')) {
-            // Ensure did not click on a button
             return;
         }
 
@@ -136,38 +221,33 @@ const Maps: NextPage = () => {
                 isClosable: true,
             });
             return;
-            return;
         }
 
-        const pos = imageRef.current!.getBoundingClientRect();
-
-        const [top, left] = calculateMarkerPosition(
-            event,
-            pos,
-            window.scrollY,
-            3,
-            3
-        );
-
-        console.log('added: ', name);
-        setMarkers((prev) => [
-            ...prev,
-            {
-                id: `new`,
+        setMarkers((prev) => {
+            const next = [...prev];
+            next[next.length - 1] = {
+                id: 'blank-new-id',
                 name: name,
-                top: top,
-                left: left,
-            },
-        ]);
+                top: prev[prev.length - 1].top,
+                left: prev[prev.length - 1].left,
+            };
+            return next;
+        });
 
-        if (nameRef.current) {
-            nameRef.current.value = '';
-            setName('');
-            nameRef.current.focus();
+        if (nameValueRef.current) {
+            nameValueRef.current.hidden = true;
         }
     };
 
     const onMarkerClick = (value: string) => {
+        if (nameValueRef.current && !nameValueRef.current.hidden) {
+            // Ensure does not do anything if a location is currently being added
+            if (nameRef.current) {
+                nameRef.current.focus();
+            }
+            return;
+        }
+
         console.log('clicked:', value);
         setMarkers((prev) => {
             const index = prev.findIndex((marker) => marker.name === value);
@@ -175,11 +255,6 @@ const Maps: NextPage = () => {
             updated.splice(index, 1);
             return updated;
         });
-        if (nameRef.current) {
-            nameRef.current.value = value;
-            setName(value);
-            nameRef.current.focus();
-        }
     };
 
     const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
@@ -191,6 +266,23 @@ const Maps: NextPage = () => {
     };
 
     const handleCreateMap = (): void => {
+        const markersLocal = markers;
+
+        if (nameValueRef.current && !nameValueRef.current.hidden) {
+            // Remove the blank point added if someone is in the middle of adding a location and tries to create the map
+            markersLocal.splice(markersLocal.length - 1, 1);
+
+            // setMarkers((prev) => {
+            //     const next: Marker[] = [];
+            //     prev.forEach((m, index) => {
+            //         if (index !== prev.length - 1) {
+            //             next.push(m);
+            //         }
+            //     });
+            //     return next;
+            // });
+        }
+
         if (!user) {
             toast({
                 title: 'User Sign In Required.',
@@ -222,7 +314,7 @@ const Maps: NextPage = () => {
             });
         }
 
-        if (markers.length === 0) {
+        if (markersLocal.length === 0) {
             toast({
                 title: 'Locations Required.',
                 description:
@@ -233,21 +325,48 @@ const Maps: NextPage = () => {
             });
         }
 
-        if (!user || !mapName || !mapDescription || markers.length === 0) {
+        if (!user || !mapName || !mapDescription || markersLocal.length === 0) {
+            return;
+        }
+
+        const reqBody = JSON.stringify({
+            creator: user?.uid,
+            description: mapDescription,
+            id: mapId,
+            name: mapName,
+            resource: resource,
+            markers: markersLocal,
+        });
+
+        if (isInEdit) {
+            const reqOptions = {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: reqBody,
+            };
+
+            fetch(`/api/maps/${mapId}`, reqOptions)
+                .then((response) => response.json())
+                .then((_) => {
+                    toast({
+                        title: 'Changes Saved',
+                        description: 'Your changes have been saved!',
+                        status: 'success',
+                        duration: 5000,
+                        isClosable: true,
+                    });
+                    Router.push({
+                        pathname: `/maps/${mapId}`,
+                    });
+                });
+
             return;
         }
 
         const reqOptions = {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                creator: user?.uid,
-                description: mapDescription,
-                id: 'na',
-                name: mapName,
-                resource: resource,
-                markers: markers,
-            }),
+            body: reqBody,
         };
 
         fetch('/api/maps', reqOptions)
@@ -280,11 +399,19 @@ const Maps: NextPage = () => {
     return (
         <NavWrapper>
             <Text mb={'1'}>
-                Directions: Add a title and description for the map. Add point
-                name in the box above the map and click on map to the location.
-                Click on a point again to delete it from the map. Two points
-                with the same name are not allowed. You must be signed in to be
-                able to create a map. Feel free to reach out to{' '}
+                <span style={{ fontWeight: 'bold' }}>Directions:</span> First,
+                add a title and description to the map. Then select which of the
+                map images you would like to use. Lastly, to add locations to
+                the map. First click on the map where you would like to add a
+                location. Then enter in that location's name and click the add
+                button to add it to the map. To delete a location, click on the
+                location you would like to delete. By hovering your mouse over a
+                location on the map, a tooltip will appear showing you the
+                current name of that location.
+                <br />
+                <br />
+                You must be signed in to be able to create a map. Feel free to
+                reach out to{' '}
                 <Link href='https://patlm.github.io/'>Patrick</Link> if there is
                 another map you would like added to the options.
             </Text>
@@ -295,6 +422,7 @@ const Maps: NextPage = () => {
                     setMapName(event.target.value)
                 }
                 placeholder={'Map Name'}
+                value={mapName}
             />
             <Textarea
                 mb={'1'}
@@ -302,6 +430,7 @@ const Maps: NextPage = () => {
                     setMapDescription(event.target.value)
                 }
                 placeholder={'Map Description'}
+                value={mapDescription}
             />
             <Select marginBottom={'1'} onChange={handleChange} value={resource}>
                 {maps.map((opt, index) => (
@@ -310,12 +439,20 @@ const Maps: NextPage = () => {
                     </option>
                 ))}
             </Select>
-            <Input
-                mb={'1'}
-                onChange={handleStateChange}
-                placeholder={'Location Name'}
-                ref={nameRef}
-            />
+            <Flex ref={nameValueRef} hidden={true}>
+                <Input
+                    mb={'1'}
+                    onChange={handleStateChange}
+                    placeholder={'Location Name'}
+                    ref={nameRef}
+                />
+                <Button onClick={handleAdd} ml={1}>
+                    Add
+                </Button>
+                <Button onClick={handleCancel} ml={1}>
+                    Cancel
+                </Button>
+            </Flex>
             <Box id='map-component-container' margin={0} padding={0}>
                 <MapComponent
                     myRef={imageRef}
@@ -323,9 +460,12 @@ const Maps: NextPage = () => {
                     markers={markers}
                     onClick={onMarkerClick}
                     onImageClick={onImageClick}
+                    showTitle={true}
                 />
             </Box>
-            <Button onClick={handleCreateMap}>Create Map</Button>
+            <Button onClick={handleCreateMap}>
+                {isInEdit ? 'Save Changes' : 'Create Map'}
+            </Button>
         </NavWrapper>
     );
 };

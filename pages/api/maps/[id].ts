@@ -11,20 +11,24 @@ export default async function handler(
     req: NextApiRequest,
     res: NextApiResponse<Map | Error>
 ) {
+    let db = initFirebase();
+    if (db === null) {
+        console.log('failing 1');
+        return;
+    }
+
+    const mapId = req.query.id;
+    if (typeof mapId !== 'string') {
+        console.log('failing 2');
+        return;
+    }
+
     switch (req.method) {
+        case 'DELETE':
+            await db?.collection('maps').doc(mapId).delete();
+            res.status(200).json({ message: 'successfully deleted' });
+            break;
         case 'GET':
-            let db = initFirebase();
-            if (db === null) {
-                console.log('failing 1');
-                return;
-            }
-
-            const mapId = req.query.id;
-            if (typeof mapId !== 'string') {
-                console.log('failing 2');
-                return;
-            }
-
             const data = await db
                 .collection('maps')
                 .doc(mapId)
@@ -62,9 +66,46 @@ export default async function handler(
                 });
             break;
         case 'PUT':
-            res.status(200).json({ message: 'not implemented' });
+            const map = req.body as Map;
+
+            // Delete all values stored in locations
+            await db
+                .collection('maps')
+                .doc(mapId)
+                .collection('coordinates')
+                .listDocuments()
+                .then((val) => {
+                    val.map((val) => val.delete());
+                });
+
+            // Add all values back stored in locations
+            map.markers.forEach((marker) => {
+                if (db !== null) {
+                    const coorData = db
+                        .collection('maps')
+                        .doc(map.id)
+                        .collection('coordinates')
+                        .doc();
+
+                    marker.id = coorData.id;
+                    coorData.set(marker);
+                }
+            });
+
+            // Update map data
+            await db.collection('maps').doc(map.id).set({
+                creator: map.creator,
+                description: map.description,
+                id: map.id,
+                name: map.name,
+                resource: map.resource,
+            });
+
+            res.status(200).json(map);
+            break;
         default:
             res.setHeader('Allow', ['GET', 'PUT']);
             res.status(405).end(`Method ${req.method} Not Allowed`);
+            break;
     }
 }

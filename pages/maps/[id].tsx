@@ -1,4 +1,15 @@
-import { Box, Button, Flex, Text } from '@chakra-ui/react';
+import {
+    AlertDialog,
+    AlertDialogBody,
+    AlertDialogContent,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogOverlay,
+    Box,
+    Button,
+    Flex,
+    Text,
+} from '@chakra-ui/react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { NextPage } from 'next';
@@ -53,6 +64,7 @@ const Map: NextPage = () => {
     const [isWA, setIsWA] = useState<boolean>(false);
     const [started, setStarted] = useState<boolean>(false);
     const [_, setInt] = useState<NodeJS.Timer>();
+    const [isDeleteHidden, setIsDeleteHidden] = useState(true);
 
     let [incorrectCount, setIncorrectCount] = useState(0);
     let [correctCount, setCorrectCount] = useState(0);
@@ -121,9 +133,16 @@ const Map: NextPage = () => {
                 setUser(user);
             } else {
                 setUser(user);
+                setIsDeleteHidden(true);
             }
         });
     }, []);
+
+    useEffect(() => {
+        if (user && user.uid === map.creator) {
+            setIsDeleteHidden(false);
+        }
+    }, [map]);
 
     const onStart = (): void => {
         if (!started) {
@@ -178,6 +197,28 @@ const Map: NextPage = () => {
         }
     };
 
+    const [isOpen, setIsOpen] = React.useState(false);
+    const onClose = () => setIsOpen(false);
+    const cancelRef = React.useRef<HTMLButtonElement>(null);
+
+    const handleDelete = () => {
+        console.log('delete');
+
+        const reqOptions = {
+            method: 'DELETE',
+        };
+
+        fetch(`/api/maps/${map.id}`, reqOptions)
+            .then((result) => result.json())
+            .then((result) => {
+                console.log('result');
+                router.push({
+                    pathname: `/maps`,
+                    query: { userId: user?.uid },
+                });
+            });
+    };
+
     return (
         <NavWrapper>
             <Box>
@@ -207,7 +248,57 @@ const Map: NextPage = () => {
                 src={map.resource}
                 markers={map.markers}
                 onClick={makeGuess}
+                showTitle={false}
             />
+            <Button
+                hidden={isDeleteHidden}
+                colorScheme={'red'}
+                onClick={() => setIsOpen(true)}
+            >
+                Delete Map
+            </Button>
+            <Button
+                ml={1}
+                hidden={isDeleteHidden}
+                onClick={() =>
+                    router.push({ pathname: '/create', query: { edit: mapId } })
+                }
+            >
+                Edit Map
+            </Button>
+            <>
+                <AlertDialog
+                    isOpen={isOpen}
+                    leastDestructiveRef={cancelRef}
+                    onClose={onClose}
+                >
+                    <AlertDialogOverlay>
+                        <AlertDialogContent>
+                            <AlertDialogHeader fontSize='lg' fontWeight='bold'>
+                                Delete Map
+                            </AlertDialogHeader>
+
+                            <AlertDialogBody>
+                                Are you sure? You can't undo this action
+                                afterwards.
+                            </AlertDialogBody>
+
+                            <AlertDialogFooter>
+                                <Button ref={cancelRef} onClick={onClose}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    colorScheme='red'
+                                    onClick={handleDelete}
+                                    ml={3}
+                                >
+                                    Delete
+                                </Button>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialogOverlay>
+                </AlertDialog>
+            </>
         </NavWrapper>
     );
 };
