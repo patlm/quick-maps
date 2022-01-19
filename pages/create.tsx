@@ -271,16 +271,6 @@ const Maps: NextPage = () => {
         if (nameValueRef.current && !nameValueRef.current.hidden) {
             // Remove the blank point added if someone is in the middle of adding a location and tries to create the map
             markersLocal.splice(markersLocal.length - 1, 1);
-
-            // setMarkers((prev) => {
-            //     const next: Marker[] = [];
-            //     prev.forEach((m, index) => {
-            //         if (index !== prev.length - 1) {
-            //             next.push(m);
-            //         }
-            //     });
-            //     return next;
-            // });
         }
 
         if (!user) {
@@ -396,6 +386,14 @@ const Maps: NextPage = () => {
         });
     }, []);
 
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') {
+            handleAdd();
+        } else if (event.key === 'Escape') {
+            handleCancel();
+        }
+    };
+
     return (
         <NavWrapper>
             <Text mb={'1'}>
@@ -432,27 +430,35 @@ const Maps: NextPage = () => {
                 placeholder={'Map Description'}
                 value={mapDescription}
             />
-            <Select marginBottom={'1'} onChange={handleChange} value={resource}>
+            <Select marginBottom={'5'} onChange={handleChange} value={resource}>
                 {maps.map((opt, index) => (
                     <option key={index} value={opt.value}>
                         {opt.label}
                     </option>
                 ))}
             </Select>
-            <Flex ref={nameValueRef} hidden={true}>
-                <Input
-                    mb={'1'}
-                    onChange={handleStateChange}
-                    placeholder={'Location Name'}
-                    ref={nameRef}
-                />
-                <Button onClick={handleAdd} ml={1}>
-                    Add
-                </Button>
-                <Button onClick={handleCancel} ml={1}>
-                    Cancel
-                </Button>
-            </Flex>
+            <Box h={'45px'}>
+                <Flex
+                    ref={nameValueRef}
+                    hidden={true}
+                    w={'400px'}
+                    alignSelf={'center'}
+                >
+                    <Input
+                        mb={'1'}
+                        onChange={handleStateChange}
+                        placeholder={'Location Name'}
+                        ref={nameRef}
+                        onKeyDown={handleKeyDown}
+                    />
+                    <Button onClick={handleAdd} ml={1}>
+                        Add
+                    </Button>
+                    <Button onClick={handleCancel} ml={1}>
+                        Cancel
+                    </Button>
+                </Flex>
+            </Box>
             <Box id='map-component-container' margin={0} padding={0}>
                 <MapComponent
                     myRef={imageRef}

@@ -226,19 +226,22 @@ const Map: NextPage = () => {
                     <Button onClick={onStart} ml={25}>
                         {!started ? 'Start' : 'End'}
                     </Button>
-                    <Text mt={2} ml={25}>
+                    <Text mt={2} ml={25} fontSize={'xl'}>
                         Time: {time} seconds
                     </Text>
-                    <Text mt={2} ml={25}>
-                        Find: {findLocal}
+                    <Text mt={2} ml={25} fontSize={'xl'}>
+                        Find:{' '}
+                        <Text fontWeight={'bold'} display={'inline'}>
+                            {findLocal}
+                        </Text>
                     </Text>
                     {isCA && (
-                        <Text mt={2} ml={25} color='green'>
+                        <Text mt={2} ml={25} color='green' fontSize={'xl'}>
                             Correct!
                         </Text>
                     )}
                     {isWA && (
-                        <Text mt={2} ml={25} color='red'>
+                        <Text mt={2} ml={25} color='red' fontSize={'xl'}>
                             Wrong!
                         </Text>
                     )}
