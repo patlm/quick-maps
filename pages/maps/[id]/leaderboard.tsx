@@ -47,6 +47,14 @@ const Finished: NextPage = () => {
                 <Link href={`/maps/${mapId}`}>
                     <Button>Try Again</Button>
                 </Link>
+                <Button
+                    ml={1}
+                    onClick={() => {
+                        router.reload();
+                    }}
+                >
+                    Refresh
+                </Button>
             </Flex>
             <Table size='md' maxW='1200px'>
                 <Thead>{headerFooterRow}</Thead>

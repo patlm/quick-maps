@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import initFirebase from '../../../lib/firebase';
+import { LeaderboardEntry } from '../../../models/leaderboardEntry';
 import { Map } from '../../../models/map';
 import { Marker } from '../../../models/marker';
 
@@ -25,7 +26,56 @@ export default async function handler(
 
     switch (req.method) {
         case 'DELETE':
+            // Delete the leaderboard
+            const toRemoveLeaderBoard: LeaderboardEntry[] = [];
+            await db
+                .collection('maps')
+                .doc(mapId)
+                .collection('leaderboard')
+                .get()
+                .then((result) => {
+                    result.forEach((entry) =>
+                        toRemoveLeaderBoard.push(
+                            entry.data() as LeaderboardEntry
+                        )
+                    );
+                });
+
+            for (const lbEntry of toRemoveLeaderBoard) {
+                await db
+                    .collection('maps')
+                    .doc(mapId)
+                    .collection('leaderboard')
+                    .doc(lbEntry.id)
+                    .delete();
+            }
+
+            // Delete the locations
+            const toRemoveMarkers: Marker[] = [];
+            await db
+                .collection('maps')
+                .doc(mapId)
+                .collection('coordinates')
+                .get()
+                .then((result) => {
+                    result.forEach((entry) =>
+                        toRemoveMarkers.push(entry.data() as Marker)
+                    );
+                });
+
+            for (const lbEntry of toRemoveMarkers) {
+                await db
+                    .collection('maps')
+                    .doc(mapId)
+                    .collection('coordinates')
+                    .doc(lbEntry.id)
+                    .delete();
+            }
+
+            // Delete the map
             await db?.collection('maps').doc(mapId).delete();
+
+            // Send success
             res.status(200).json({ message: 'successfully deleted' });
             break;
         case 'GET':

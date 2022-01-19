@@ -24,25 +24,23 @@ export const UserCard: FC<UserCardProps> = (props) => {
             <Stack
                 borderWidth='1px'
                 borderRadius='lg'
-                w={'400px'}
-                height={'100px'}
-                direction={{ base: 'column', md: 'row' }}
+                minW={'325'}
+                height={'85px'}
+                direction={{ base: 'row', md: 'row' }}
                 bg={useColorModeValue('white', 'gray.900')}
-                boxShadow={'2xl'}
+                boxShadow={'xl'}
                 padding={4}
             >
-                <Flex flex={1}>
-                    <Avatar size={'lg'} src={props.user.photoURL} />
+                <Flex>
+                    <Avatar size={'md'} src={props.user.photoURL} />
                 </Flex>
                 <Stack
-                    flex={3}
-                    flexDirection='column'
-                    justifyContent='center'
+                    flexDirection='row'
+                    justifyContent='left'
                     alignItems='center'
                     p={1}
-                    pt={2}
                 >
-                    <Heading fontSize={'2xl'} fontFamily={'body'}>
+                    <Heading fontSize={'xl'} fontFamily={'body'} ml={15}>
                         {props.user.displayName}
                     </Heading>
                 </Stack>
