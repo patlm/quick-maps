@@ -55,7 +55,7 @@ const Home: NextPage = () => {
                                 Test your skills &rarr;
                             </Heading>
                             <Text>
-                                Checkout the collection of existing maps
+                                Check out the collection of existing maps
                                 available for you to play.
                             </Text>
                             <img src='/map-card.png' />
